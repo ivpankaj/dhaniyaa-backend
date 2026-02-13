@@ -85,3 +85,14 @@ export const changeMemberRole = async (projectId: string, userId: string, newRol
     return await Project.findById(projectId).populate('members.userId', 'name email avatar');
 };
 
+
+export const deleteProject = async (projectId: string, userId: string) => {
+    const project = await Project.findById(projectId);
+    if (!project) return null;
+
+    if (project.createdBy.toString() !== userId) {
+        throw new Error('Unauthorized: Only the project creator can delete this project');
+    }
+
+    return await Project.findByIdAndDelete(projectId);
+};

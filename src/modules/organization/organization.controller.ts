@@ -31,3 +31,17 @@ export const invite = async (req: any, res: Response, next: NextFunction) => {
         next(error);
     }
 };
+
+export const deleteOrganization = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const id = req.params.id as string;
+        const org = await organizationService.deleteOrganization(id, req.user._id.toString());
+        if (!org) {
+            res.status(404).json({ success: false, message: 'Organization not found' });
+            return;
+        }
+        res.status(200).json({ success: true, message: 'Organization deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};

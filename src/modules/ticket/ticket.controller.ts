@@ -58,7 +58,8 @@ export const update = async (req: any, res: Response, next: NextFunction) => {
 export const updateStatus = async (req: any, res: Response, next: NextFunction) => {
     try {
         const { status } = req.body;
-        const ticket = await ticketService.updateTicketStatus(req.params.id as string, status as TicketStatus);
+        const ticket = await ticketService.updateTicketStatus(req.params.id as string, status as TicketStatus, req.user!._id.toString());
+        console.log(`[Controller] Ticket status updated, awaiting background tasks triggered in service.`);
 
         if (ticket) {
             const io = req.app.get('io');
@@ -84,6 +85,17 @@ export const getBySprint = async (req: any, res: Response, next: NextFunction) =
     try {
         const tickets = await ticketService.getTicketsBySprint(req.params.sprintId as string);
         res.status(200).json({ success: true, data: tickets });
+    } catch (error) {
+        next(error);
+    }
+};
+export const deleteTicket = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const ticket = await ticketService.deleteTicket(req.params.id as string, req.user!._id.toString());
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found or unauthorized' });
+        }
+        res.status(200).json({ success: true, message: 'Ticket deleted successfully' });
     } catch (error) {
         next(error);
     }

@@ -82,3 +82,17 @@ export const changeMemberRole = async (req: any, res: Response, next: NextFuncti
     }
 };
 
+
+export const deleteProject = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const id = req.params.id as string;
+        const project = await projectService.deleteProject(id, req.user._id.toString());
+        if (!project) {
+            res.status(404).json({ success: false, message: 'Project not found' });
+            return;
+        }
+        res.status(200).json({ success: true, message: 'Project deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};

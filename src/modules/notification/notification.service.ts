@@ -1,8 +1,25 @@
 import { Notification, INotification } from './notification.model';
+import { getIO } from '../../socket';
 
 export const createNotification = async (data: any) => {
-    const notification = await Notification.create(data as any);
-    return await notification.populate('sender', 'name email');
+    try {
+        console.log(`[Notification] Creating notification for: ${data.recipient}, type: ${data.type}`);
+        const notification = await Notification.create(data as any);
+        const populated = await notification.populate('sender', 'name email');
+
+        try {
+            const io = getIO();
+            console.log(`[Notification] Emitting to socket room: ${data.recipient}`);
+            io.to(data.recipient).emit('notification', populated);
+        } catch (err) {
+            console.warn('Socket not initialized or failed to emit notification', err);
+        }
+
+        return populated;
+    } catch (error) {
+        console.error('[Notification] Error creating notification:', error);
+        throw error;
+    }
 };
 
 export const getUserNotifications = async (userId: string) => {

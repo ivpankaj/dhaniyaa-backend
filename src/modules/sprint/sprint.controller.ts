@@ -3,8 +3,20 @@ import * as sprintService from './sprint.service';
 
 export const create = async (req: any, res: Response, next: NextFunction) => {
     try {
-        const sprint = await sprintService.createSprint(req.body);
+        const sprint = await sprintService.createSprint(req.user!._id.toString(), req.body);
         res.status(201).json({ success: true, data: sprint });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteSprint = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const sprint = await sprintService.deleteSprint(req.params.id as string, req.user!._id.toString());
+        if (!sprint) {
+            return res.status(404).json({ success: false, message: 'Sprint not found or unauthorized' });
+        }
+        res.status(200).json({ success: true, message: 'Sprint deleted successfully' });
     } catch (error) {
         next(error);
     }
@@ -30,7 +42,7 @@ export const update = async (req: any, res: Response, next: NextFunction) => {
 
 export const complete = async (req: any, res: Response, next: NextFunction) => {
     try {
-        const sprint = await sprintService.completeSprint(req.params.id as string);
+        const sprint = await sprintService.completeSprint(req.params.id as string, req.user!._id.toString());
         res.status(200).json({ success: true, data: sprint });
     } catch (error) {
         next(error);

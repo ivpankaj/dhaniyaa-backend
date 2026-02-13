@@ -2,21 +2,21 @@ import nodemailer from 'nodemailer';
 
 export const sendEmail = async (to: string, subject: string, text: string) => {
     // If SMTP credentials are provided, use real email sending
-    if (process.env.SMTP_EMAIL && process.env.SMTP_PASSWORD) {
+    const smtpEmail = process.env.SMTP_EMAIL?.trim();
+    const smtpPass = process.env.SMTP_PASSWORD?.trim();
+
+    if (smtpEmail && smtpPass) {
         try {
             const transporter = nodemailer.createTransport({
-                service: 'gmail', // Default to gmail for simplicity, or use host/port if provided
-                host: process.env.SMTP_HOST || 'smtp.gmail.com',
-                port: parseInt(process.env.SMTP_PORT || '587'),
-                secure: false, // true for 465, false for other ports
+                service: 'gmail',
                 auth: {
-                    user: process.env.SMTP_EMAIL,
-                    pass: process.env.SMTP_PASSWORD,
+                    user: smtpEmail,
+                    pass: smtpPass,
                 },
             });
 
             const info = await transporter.sendMail({
-                from: `"Dhaniyaa" <${process.env.SMTP_EMAIL}>`,
+                from: `"Dhaniyaa" <${smtpEmail}>`,
                 to,
                 subject,
                 text,
@@ -53,6 +53,47 @@ Title: ${ticketTitle}
 Priority: ${priority}
 
 You can view the details in dhaniyaa.
+
+Best regards,
+Dhaniyaa Team
+`;
+    return sendEmail(to, subject, body.trim());
+};
+
+export const sendTicketStatusEmail = async (to: string, userName: string, ticketTitle: string, status: string, actionBy: string) => {
+    const subject = `Ticket Status Updated: ${ticketTitle}`;
+    const body = `
+Hi ${userName},
+
+The status of ticket "${ticketTitle}" has been updated to **${status}** by ${actionBy}.
+
+You can view the details in Dhaniyaa.
+
+Best regards,
+Dhaniyaa Team
+`;
+    return sendEmail(to, subject, body.trim());
+};
+
+export const sendTicketDeletionEmail = async (to: string, userName: string, ticketTitle: string, actionBy: string) => {
+    const subject = `Ticket Deleted: ${ticketTitle}`;
+    const body = `
+Hi ${userName},
+
+The ticket "${ticketTitle}" has been deleted by ${actionBy}.
+
+Best regards,
+Dhaniyaa Team
+`;
+    return sendEmail(to, subject, body.trim());
+};
+
+export const sendSprintNotificationEmail = async (to: string, userName: string, sprintName: string, action: string, actionBy: string) => {
+    const subject = `Sprint Update: ${sprintName}`;
+    const body = `
+Hi ${userName},
+
+The sprint "${sprintName}" has been ${action} by ${actionBy}.
 
 Best regards,
 Dhaniyaa Team

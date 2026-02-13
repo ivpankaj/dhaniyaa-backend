@@ -7,11 +7,12 @@ export interface ISprint extends Document {
     endDate: Date;
     projectId: mongoose.Types.ObjectId;
     status: 'ACTIVE' | 'PLANNED' | 'COMPLETED';
-    summary?: {
+    summary: {
         totalTickets: number;
         completedTickets: number;
         pushedBackTickets: number;
     };
+    createdBy: mongoose.Types.ObjectId;
 }
 
 const SprintSchema = new Schema<ISprint>({
@@ -25,7 +26,8 @@ const SprintSchema = new Schema<ISprint>({
         totalTickets: { type: Number, default: 0 },
         completedTickets: { type: Number, default: 0 },
         pushedBackTickets: { type: Number, default: 0 }
-    }
+    },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
     timestamps: true
 });

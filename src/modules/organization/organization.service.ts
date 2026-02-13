@@ -51,3 +51,14 @@ export const inviteMember = async (organizationId: string, email: string) => {
 
     return organization;
 };
+
+export const deleteOrganization = async (organizationId: string, userId: string) => {
+    const organization = await Organization.findById(organizationId);
+    if (!organization) return null;
+
+    if (organization.owner.toString() !== userId) {
+        throw new Error('Unauthorized: Only the organization owner can delete this organization');
+    }
+
+    return await Organization.findByIdAndDelete(organizationId);
+};
