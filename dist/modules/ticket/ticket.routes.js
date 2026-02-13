@@ -1,0 +1,17 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const ticket_controller_1 = require("./ticket.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const validate_middleware_1 = require("../../middleware/validate.middleware");
+const ticket_validation_1 = require("./ticket.validation");
+const router = express_1.default.Router();
+router.use(auth_middleware_1.protect);
+router.post('/', (0, validate_middleware_1.validate)(ticket_validation_1.createTicketSchema), ticket_controller_1.create);
+router.get('/', ticket_controller_1.getByProject);
+router.patch('/:id', (0, validate_middleware_1.validate)(ticket_validation_1.updateTicketSchema), ticket_controller_1.update);
+router.patch('/:id/status', (0, validate_middleware_1.validate)(ticket_validation_1.updateTicketStatusSchema), ticket_controller_1.updateStatus);
+exports.default = router;
