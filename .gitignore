@@ -1,6 +1,8 @@
 # dependencies
 node_modules/
 
+dist/
+
 # next build files
 .next/
 
