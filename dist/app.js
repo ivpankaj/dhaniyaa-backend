@@ -17,6 +17,8 @@ const comment_routes_1 = __importDefault(require("./modules/comment/comment.rout
 const notification_routes_1 = __importDefault(require("./modules/notification/notification.routes"));
 const sprint_routes_1 = __importDefault(require("./modules/sprint/sprint.routes"));
 const activity_routes_1 = __importDefault(require("./modules/activity/activity.routes"));
+const invitation_routes_1 = __importDefault(require("./modules/invitation/invitation.routes"));
+const upload_routes_1 = __importDefault(require("./modules/upload/upload.routes"));
 const app = (0, express_1.default)();
 // Middleware
 app.use(express_1.default.json());
@@ -38,6 +40,8 @@ app.use('/api/comments', comment_routes_1.default);
 app.use('/api/notifications', notification_routes_1.default);
 app.use('/api/sprints', sprint_routes_1.default);
 app.use('/api/activities', activity_routes_1.default);
+app.use('/api/invitations', invitation_routes_1.default);
+app.use('/api/upload', upload_routes_1.default);
 // Error Handling
 app.use(error_middleware_1.errorHandler);
 exports.default = app;

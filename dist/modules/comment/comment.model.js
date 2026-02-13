@@ -39,6 +39,7 @@ const CommentSchema = new mongoose_1.Schema({
     ticketId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Ticket', required: true, index: true },
     userId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
     message: { type: String, required: true },
+    attachments: [{ type: String, default: [] }]
 }, {
     timestamps: true
 });

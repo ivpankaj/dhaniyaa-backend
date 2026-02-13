@@ -68,7 +68,9 @@ const TicketSchema = new mongoose_1.Schema({
     reporter: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
     comments: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Comment' }],
     dueDate: { type: Date },
-    sprintId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint' }
+    sprintId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint' },
+    sprintHistory: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint', default: [] }],
+    attachments: [{ type: String, default: [] }]
 }, {
     timestamps: true
 });

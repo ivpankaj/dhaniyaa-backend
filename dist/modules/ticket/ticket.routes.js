@@ -14,4 +14,5 @@ router.post('/', (0, validate_middleware_1.validate)(ticket_validation_1.createT
 router.get('/', ticket_controller_1.getByProject);
 router.patch('/:id', (0, validate_middleware_1.validate)(ticket_validation_1.updateTicketSchema), ticket_controller_1.update);
 router.patch('/:id/status', (0, validate_middleware_1.validate)(ticket_validation_1.updateTicketStatusSchema), ticket_controller_1.updateStatus);
+router.get('/sprint/:sprintId', ticket_controller_1.getBySprint);
 exports.default = router;

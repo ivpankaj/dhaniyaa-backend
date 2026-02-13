@@ -67,8 +67,8 @@ const updatePassword = async (req, res, next) => {
 exports.updatePassword = updatePassword;
 const googleLogin = async (req, res, next) => {
     try {
-        const { token } = req.body;
-        const result = await authService.googleLogin(token);
+        const { token, avatar } = req.body;
+        const result = await authService.googleLogin(token, avatar);
         res.status(200).json({ success: true, data: result });
     }
     catch (error) {

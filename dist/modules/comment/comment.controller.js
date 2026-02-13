@@ -37,11 +37,12 @@ exports.getByTicket = exports.create = void 0;
 const commentService = __importStar(require("./comment.service"));
 const create = async (req, res, next) => {
     try {
-        const comment = await commentService.createComment(req.user._id.toString(), req.body);
-        // Emit socket event (optional for now, but good for realtime chat)
-        const io = req.app.get('io');
-        // We might need to know the projectId to emit to the room, or we emit to a ticket-specific room
-        // For now, let's skip socket for comments or handle it in the ticket update
+        const { comment, projectId } = await commentService.createComment(req.user._id.toString(), req.body);
+        // Emit socket event for real-time updates
+        if (projectId) {
+            const io = req.app.get('io');
+            io.to(projectId.toString()).emit('comment_created', comment);
+        }
         res.status(201).json({ success: true, data: comment });
     }
     catch (error) {

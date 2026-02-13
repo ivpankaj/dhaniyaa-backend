@@ -11,4 +11,5 @@ router.use(auth_middleware_1.protect);
 router.post('/', sprint_controller_1.create);
 router.get('/', sprint_controller_1.getByProject);
 router.patch('/:id', sprint_controller_1.update);
+router.patch('/:id/complete', sprint_controller_1.complete);
 exports.default = router;

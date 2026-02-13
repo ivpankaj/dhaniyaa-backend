@@ -22,3 +22,4 @@ process.on('unhandledRejection', (err) => {
         process.exit(1);
     });
 });
+console.log('Force restart: tsconfig update applied');

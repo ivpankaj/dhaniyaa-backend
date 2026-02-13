@@ -33,11 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateStatus = exports.update = exports.getByProject = exports.create = void 0;
+exports.getBySprint = exports.updateStatus = exports.update = exports.getByProject = exports.create = void 0;
 const ticketService = __importStar(require("./ticket.service"));
 const activityService = __importStar(require("../activity/activity.service"));
 const create = async (req, res, next) => {
     try {
+        if (req.body.assignee && String(req.body.assignee) === String(req.user._id)) {
+            return res.status(400).json({ success: false, message: 'You cannot assign a task to yourself' });
+        }
         const ticket = await ticketService.createTicket(req.user._id.toString(), req.body);
         // Emit socket event
         const io = req.app.get('io');
@@ -68,6 +71,9 @@ const getByProject = async (req, res, next) => {
 exports.getByProject = getByProject;
 const update = async (req, res, next) => {
     try {
+        if (req.body.assignee && String(req.body.assignee) === String(req.user._id)) {
+            return res.status(400).json({ success: false, message: 'You cannot assign a task to yourself' });
+        }
         const ticket = await ticketService.updateTicket(req.params.id, req.body);
         // Emit socket event
         if (ticket) {
@@ -104,3 +110,13 @@ const updateStatus = async (req, res, next) => {
     }
 };
 exports.updateStatus = updateStatus;
+const getBySprint = async (req, res, next) => {
+    try {
+        const tickets = await ticketService.getTicketsBySprint(req.params.sprintId);
+        res.status(200).json({ success: true, data: tickets });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getBySprint = getBySprint;

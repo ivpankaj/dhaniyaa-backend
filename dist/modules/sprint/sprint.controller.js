@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.update = exports.getByProject = exports.create = void 0;
+exports.complete = exports.update = exports.getByProject = exports.create = void 0;
 const sprintService = __importStar(require("./sprint.service"));
 const create = async (req, res, next) => {
     try {
@@ -65,3 +65,13 @@ const update = async (req, res, next) => {
     }
 };
 exports.update = update;
+const complete = async (req, res, next) => {
+    try {
+        const sprint = await sprintService.completeSprint(req.params.id);
+        res.status(200).json({ success: true, data: sprint });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.complete = complete;

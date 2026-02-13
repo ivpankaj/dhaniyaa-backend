@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const project_controller_1 = require("./project.controller");
+const invitation_controller_1 = require("../invitation/invitation.controller");
 const auth_middleware_1 = require("../../middleware/auth.middleware");
 const validate_middleware_1 = require("../../middleware/validate.middleware");
 const project_validation_1 = require("./project.validation");
@@ -13,5 +14,9 @@ router.use(auth_middleware_1.protect);
 router.post('/', (0, validate_middleware_1.validate)(project_validation_1.createProjectSchema), project_controller_1.create);
 router.get('/', project_controller_1.getByOrg);
 router.get('/:id', project_controller_1.getOne);
-router.post('/:id/invite', project_controller_1.invite);
+router.patch('/:id', project_controller_1.update);
+router.post('/:id/invite', invitation_controller_1.inviteMember);
+router.get('/:id/invitations', invitation_controller_1.getProjectInvitations);
+router.delete('/:id/members/:memberId', project_controller_1.removeMember);
+router.patch('/:id/members/:memberId', project_controller_1.changeMemberRole);
 exports.default = router;

@@ -33,21 +33,21 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Sprint = void 0;
+exports.Invitation = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
-const SprintSchema = new mongoose_1.Schema({
-    name: { type: String, required: true },
-    goal: { type: String },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-    projectId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
-    status: { type: String, enum: ['ACTIVE', 'PLANNED', 'COMPLETED'], default: 'PLANNED' },
-    summary: {
-        totalTickets: { type: Number, default: 0 },
-        completedTickets: { type: Number, default: 0 },
-        pushedBackTickets: { type: Number, default: 0 }
-    }
+const InvitationSchema = new mongoose_1.Schema({
+    email: { type: String, required: true },
+    projectId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Project', required: true },
+    invitedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: {
+        type: String,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending'
+    },
+    token: { type: String }
 }, {
     timestamps: true
 });
-exports.Sprint = mongoose_1.default.model('Sprint', SprintSchema);
+// Ensure an email can only have one pending invite per project
+InvitationSchema.index({ email: 1, projectId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+exports.Invitation = mongoose_1.default.model('Invitation', InvitationSchema);

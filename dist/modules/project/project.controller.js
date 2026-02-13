@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.invite = exports.getOne = exports.getByOrg = exports.create = void 0;
+exports.changeMemberRole = exports.removeMember = exports.update = exports.invite = exports.getOne = exports.getByOrg = exports.create = void 0;
 const projectService = __importStar(require("./project.service"));
 const create = async (req, res, next) => {
     try {
@@ -47,7 +47,15 @@ const create = async (req, res, next) => {
 exports.create = create;
 const getByOrg = async (req, res, next) => {
     try {
-        const projects = await projectService.getProjectsByOrg(req.query.organizationId);
+        const organizationId = req.query.organizationId;
+        let projects;
+        if (organizationId) {
+            projects = await projectService.getProjectsByOrg(organizationId);
+        }
+        else {
+            // If no org ID provided, return all projects the user is a member of
+            projects = await projectService.getProjectsForUser(req.user._id.toString());
+        }
         res.status(200).json({ success: true, data: projects });
     }
     catch (error) {
@@ -81,3 +89,36 @@ const invite = async (req, res, next) => {
     }
 };
 exports.invite = invite;
+const update = async (req, res, next) => {
+    try {
+        const project = await projectService.updateProject(req.params.id, req.body);
+        res.status(200).json({ success: true, data: project });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.update = update;
+const removeMember = async (req, res, next) => {
+    try {
+        const { id, memberId } = req.params;
+        const project = await projectService.removeMember(id, memberId);
+        res.status(200).json({ success: true, data: project });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.removeMember = removeMember;
+const changeMemberRole = async (req, res, next) => {
+    try {
+        const { id, memberId } = req.params;
+        const { role } = req.body;
+        const project = await projectService.changeMemberRole(id, memberId, role);
+        res.status(200).json({ success: true, data: project });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.changeMemberRole = changeMemberRole;

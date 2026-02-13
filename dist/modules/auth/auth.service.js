@@ -117,7 +117,7 @@ const updatePassword = async (userId, data) => {
 };
 exports.updatePassword = updatePassword;
 // Google Login
-const googleLogin = async (idToken) => {
+const googleLogin = async (idToken, googleAvatar) => {
     if (!idToken) {
         throw new Error('No ID token provided');
     }
@@ -128,6 +128,12 @@ const googleLogin = async (idToken) => {
             params: { id_token: idToken }
         });
         const { email, email_verified, name, sub, picture } = response.data;
+        // Use the avatar passed from frontend (which comes from result.user.photoURL) 
+        // OR the one from token (which might be undefined)
+        const userAvatar = googleAvatar || picture;
+        console.log('Google Profile Picture (Token):', picture);
+        console.log('Google Profile Picture (Frontend):', googleAvatar);
+        console.log('Final User Avatar:', userAvatar);
         if (!email_verified) {
             const error = new Error('Email not verified by Google');
             error.statusCode = 403;
@@ -142,16 +148,18 @@ const googleLogin = async (idToken) => {
                 password: '', // Password will be set later
                 isVerified: true,
                 googleId: sub,
-                avatar: picture
+                avatar: userAvatar
             });
             isNewUser = true;
         }
         else {
-            // Update exist user google info if missing or just update avatar if not present
+            // Update existing user google info if missing
             if (!user.googleId)
                 user.googleId = sub;
-            if (!user.avatar && picture)
-                user.avatar = picture;
+            // Always sync avatar from Google to keep it up to date
+            if (userAvatar) {
+                user.avatar = userAvatar;
+            }
             await user.save();
         }
         return {
