@@ -11,3 +11,10 @@ export const create = async (data: Partial<IUser>) => {
 export const findById = async (id: string) => {
     return await User.findById(id);
 };
+
+export const findByResetToken = async (resetPasswordToken: string) => {
+    return await User.findOne({
+        resetPasswordToken,
+        resetPasswordExpire: { $gt: Date.now() }
+    });
+};

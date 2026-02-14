@@ -2,6 +2,7 @@ import { Ticket, ITicket, TicketStatus } from './ticket.model';
 import { sendTicketAssignmentEmail, sendTicketStatusEmail, sendTicketDeletionEmail } from '../../utils/email.service';
 import { User } from '../user/user.model';
 import { createNotification } from '../notification/notification.service';
+import { backgroundJobManager } from '../../utils/background-jobs';
 
 export const createTicket = async (userId: string, data: Partial<ITicket>) => {
     const ticket = await Ticket.create({
@@ -11,40 +12,48 @@ export const createTicket = async (userId: string, data: Partial<ITicket>) => {
     });
 
     if (ticket.assignee) {
-        const assignedUser = await User.findById(ticket.assignee);
-        if (assignedUser) {
-            // Email
-            await sendTicketAssignmentEmail(
-                assignedUser.email,
-                assignedUser.name,
-                ticket.title,
-                ticket.type,
-                ticket.priority
-            );
+        // Run in background
+        backgroundJobManager.add('ticket_assignment', { ticketId: ticket._id, assigneeId: ticket.assignee, userId }, async (payload) => {
+            const { ticketId, assigneeId, userId } = payload;
+            const assignedUser = await User.findById(assigneeId);
+            const ticket = await Ticket.findById(ticketId); // Re-fetch to ensure fresh data if needed, or pass data. Ticket object might be stale if modified quickly
 
-            await createNotification({
-                recipient: assignedUser._id.toString(),
-                sender: userId,
-                type: 'ticket_assigned',
-                entityType: 'Ticket',
-                entityId: ticket._id,
-                message: `assigned you to a new ticket: ${ticket.title}`
-            });
-        }
+            if (assignedUser && ticket) {
+                await sendTicketAssignmentEmail(
+                    assignedUser.email,
+                    assignedUser.name,
+                    ticket.title,
+                    ticket.type,
+                    ticket.priority
+                );
+
+                await createNotification({
+                    recipient: assignedUser._id.toString(),
+                    sender: userId,
+                    type: 'ticket_assigned',
+                    entityType: 'Ticket',
+                    entityId: ticket._id,
+                    message: `assigned you to a new ticket: ${ticket.title}`
+                });
+            }
+        });
     }
 
     return ticket;
 };
 
-export const getTicketsByProject = async (projectId: string, sprintId?: string | undefined) => {
+import { paginate, PaginationOptions } from '../../utils/pagination';
+
+export const getTicketsByProject = async (projectId: string, sprintId?: string | undefined, options: PaginationOptions = {}) => {
     const query: any = { projectId };
     if (sprintId !== undefined) {
         query.sprintId = sprintId;
     }
-    return await Ticket.find(query)
-        .populate('assignee', 'name email avatar')
-        .populate('reporter', 'name email avatar')
-        .sort({ createdAt: -1 });
+
+    return await paginate(Ticket, query, options, [
+        { path: 'assignee', select: 'name email avatar' },
+        { path: 'reporter', select: 'name email avatar' }
+    ]);
 };
 
 export const updateTicket = async (ticketId: string, updates: Partial<ITicket>) => {
@@ -60,26 +69,36 @@ export const updateTicket = async (ticketId: string, updates: Partial<ITicket>) 
     }
 
     if (ticket && updates.assignee && updates.assignee.toString() !== oldTicket?.assignee?.toString()) {
-        const assignedUser = ticket.assignee as any; // Populated
-        if (assignedUser && assignedUser.email) {
-            // Email
-            await sendTicketAssignmentEmail(
-                assignedUser.email,
-                assignedUser.name,
-                ticket.title,
-                ticket.type,
-                ticket.priority
-            );
+        backgroundJobManager.add('ticket_reassignment', { ticketId: ticket._id, assignee: ticket.assignee, reporter: ticket.reporter }, async (payload) => {
+            const { ticketId, assignee, reporter } = payload;
+            const assignedUser = assignee as any; // Already populated in `ticket` but might need to double check if passed object is populated. Safe to use ID if needed.
+            // If populated, great. If not, fetch.
+            // Strategy: Pass IDs and fetch strictly in job to avoid stale data issues or circular dependency issues with 'populate'.
+            // Simplification: Re-fetch user in job.
 
-            await createNotification({
-                recipient: assignedUser._id.toString(),
-                sender: (ticket.reporter as any)?._id?.toString() || (ticket.reporter as any),
-                type: 'ticket_assigned',
-                entityType: 'Ticket',
-                entityId: ticket._id,
-                message: `re-assigned you to a ticket: ${ticket.title}`
-            });
-        }
+            const targetUser = await User.findById(assignedUser._id || assignedUser);
+            const reporterUser = await User.findById(reporter._id || reporter);
+            const currentTicket = await Ticket.findById(ticketId);
+
+            if (targetUser && targetUser.email && currentTicket) {
+                await sendTicketAssignmentEmail(
+                    targetUser.email,
+                    targetUser.name,
+                    currentTicket.title,
+                    currentTicket.type,
+                    currentTicket.priority
+                );
+
+                await createNotification({
+                    recipient: targetUser._id.toString(),
+                    sender: reporterUser?._id.toString() || 'system',
+                    type: 'ticket_assigned',
+                    entityType: 'Ticket',
+                    entityId: currentTicket._id,
+                    message: `re-assigned you to a ticket: ${currentTicket.title}`
+                });
+            }
+        });
     }
 
     return ticket;
@@ -87,41 +106,30 @@ export const updateTicket = async (ticketId: string, updates: Partial<ITicket>) 
 
 export const updateTicketStatus = async (ticketId: string, status: TicketStatus, userId: string) => {
     console.log(`[Service] updateTicketStatus called for ticket ${ticketId}, status: ${status}, user: ${userId}`);
-    const oldTicket = await Ticket.findById(ticketId);
     const ticket = await Ticket.findByIdAndUpdate(ticketId, { status }, { new: true })
         .populate('assignee', 'name email')
         .populate('reporter', 'name email');
 
-
     if (!ticket) return null;
 
-    // Run notifications in background
-    (async () => {
+    // Run notifications in background queue
+    backgroundJobManager.add('ticket_status_update', { ticketId: ticket._id, status, userId }, async (payload) => {
+        const { ticketId, status, userId } = payload;
+        const ticket = await Ticket.findById(ticketId).populate('assignee').populate('reporter');
+        if (!ticket) return;
+
         try {
-            console.log(`[Background] Starting notification logic for ticket ${ticket._id} status update`);
+            console.log(`[BackgroundJob] Starting notification logic for ticket ${ticket._id} status update`);
             const currentUser = await User.findById(userId);
             const actorName = currentUser?.name || 'Unknown';
 
             const reporter = ticket.reporter as any;
             const assignee = ticket.assignee as any;
-
-            // Helper to safely get ID
-            const getId = (doc: any) => doc?._id?.toString() || doc?.toString();
-
-            const reporterId = getId(reporter);
-            const assigneeId = getId(assignee);
-
-            console.log('--- Ticket Status Update Notification Debug ---');
-            console.log(`Ticket ID: ${ticket._id}`);
-            console.log(`Actor ID: ${userId} (${actorName})`);
-            console.log(`Reporter ID: ${reporterId} (${reporter?.name})`);
-            console.log(`Assignee ID: ${assigneeId} (${assignee?.name})`);
-            console.log(`Should Notify Assigne?: ${assigneeId && assigneeId !== userId && assigneeId !== reporterId}`);
-            console.log('---------------------------------------------');
+            const reporterId = reporter?._id?.toString();
+            const assigneeId = assignee?._id?.toString();
 
             // Notify Reporter
-            if (reporterId) {
-                console.log('Notifying Reporter...');
+            if (reporterId && reporterId !== userId) { // Don't notify self
                 await createNotification({
                     recipient: reporterId,
                     sender: userId,
@@ -131,24 +139,14 @@ export const updateTicketStatus = async (ticketId: string, status: TicketStatus,
                     message: `updated ticket "${ticket.title}" status to ${status}`
                 });
                 if (reporter?.email) {
-                    console.log(`[Email] Sending status update email to reporter: ${reporter.email}`);
                     try {
                         await sendTicketStatusEmail(reporter.email, reporter.name, ticket.title, status, actorName);
-                        console.log(`[Email] Successfully sent email to reporter: ${reporter.email}`);
-                    } catch (emailErr: any) {
-                        console.error(`[Email] Failed to send email to reporter: ${reporter.email}`, emailErr);
-                    }
-                } else {
-                    console.warn(`[Email] Reporter has no email address: ${reporterId}`);
+                    } catch (e) { console.error(e); }
                 }
-            } else {
-                console.log('Reporter is undefined, skipping notification.');
             }
 
             // Notify Assignee
-            // Notify Assignee
-            if (assigneeId && assigneeId !== reporterId) {
-                console.log('Notifying Assignee...');
+            if (assigneeId && assigneeId !== reporterId && assigneeId !== userId) { // Don't notify self or if already notified as reporter
                 await createNotification({
                     recipient: assigneeId,
                     sender: userId,
@@ -158,34 +156,22 @@ export const updateTicketStatus = async (ticketId: string, status: TicketStatus,
                     message: `updated ticket "${ticket.title}" status to ${status}`
                 });
                 if (assignee?.email) {
-                    console.log(`[Email] Sending status update email to assignee: ${assignee.email}`);
                     try {
                         await sendTicketStatusEmail(assignee.email, assignee.name, ticket.title, status, actorName);
-                        console.log(`[Email] Successfully sent email to assignee: ${assignee.email}`);
-                    } catch (emailErr: any) {
-                        console.error(`[Email] Failed to send email to assignee: ${assignee.email}`, emailErr);
-                    }
-                } else {
-                    console.warn(`[Email] Assignee has no email address: ${assigneeId}`);
+                    } catch (e) { console.error(e); }
                 }
-            } else {
-                console.log('Assignee is same as actor or reporter, skipping notification.');
             }
-
         } catch (error) {
             console.error('Failed to send status update notification', error);
         }
-    })();
+    });
 
     return ticket;
 };
 
-
 export const deleteTicket = async (ticketId: string, userId: string) => {
     const ticket = await Ticket.findById(ticketId).populate('assignee', 'name email');
     if (!ticket) return null;
-
-    console.log(`[deleteTicket] Reporter: ${ticket.reporter}, User: ${userId}`);
 
     if (ticket.reporter.toString() !== userId) {
         const error: any = new Error('Unauthorized: Only the reporter can delete this ticket');
@@ -193,31 +179,30 @@ export const deleteTicket = async (ticketId: string, userId: string) => {
         throw error;
     }
 
-    // Run notifications in background
-    (async () => {
+    // Run notifications in background queue
+    backgroundJobManager.add('ticket_deletion', { ticketId: ticket._id, title: ticket.title, assigneeId: (ticket.assignee as any)?._id, assigneeEmail: (ticket.assignee as any)?.email, assigneeName: (ticket.assignee as any)?.name, userId }, async (payload) => {
+        const { ticketId, title, assigneeId, assigneeEmail, assigneeName, userId } = payload;
         try {
             const currentUser = await User.findById(userId);
             const actorName = currentUser?.name || 'Unknown';
 
-            // Notify Assignee
-            const assignee = ticket.assignee as any;
-            if (assignee && assignee._id.toString() !== userId) {
+            if (assigneeId && assigneeId.toString() !== userId) {
                 await createNotification({
-                    recipient: assignee._id.toString(),
+                    recipient: assigneeId.toString(),
                     sender: userId,
-                    type: 'ticket_deleted', // Ensure frontend handles or defaults this
+                    type: 'ticket_deleted',
                     entityType: 'Ticket',
-                    entityId: ticket._id,
-                    message: `deleted ticket "${ticket.title}"`
+                    entityId: ticketId, // Note: Ticket won't exist in DB, but ID reference persists in notification
+                    message: `deleted ticket "${title}"`
                 });
-                if (assignee.email) {
-                    await sendTicketDeletionEmail(assignee.email, assignee.name, ticket.title, actorName);
+                if (assigneeEmail) {
+                    await sendTicketDeletionEmail(assigneeEmail, assigneeName, title, actorName);
                 }
             }
         } catch (e) {
             console.error('Failed to notify assignee about ticket deletion', e);
         }
-    })();
+    });
 
     return await Ticket.findByIdAndDelete(ticketId);
 };
@@ -232,4 +217,30 @@ export const getTicketsBySprint = async (sprintId: string) => {
         .populate('assignee', 'name email avatar')
         .populate('reporter', 'name email avatar')
         .sort({ status: 1 });
+};
+
+
+
+export const toggleWatch = async (ticketId: string, userId: string) => {
+    const ticket = await Ticket.findById(ticketId);
+    if (!ticket) return null;
+
+    const isWatching = ticket.watchers.some(w => w.toString() === userId);
+
+    if (isWatching) {
+        return await Ticket.findByIdAndUpdate(ticketId, { $pull: { watchers: userId } }, { new: true });
+    } else {
+        return await Ticket.findByIdAndUpdate(ticketId, { $addToSet: { watchers: userId } }, { new: true });
+    }
+};
+
+export const getTicketById = async (ticketId: string) => {
+    return await Ticket.findById(ticketId)
+        .populate('assignee', 'name email avatar')
+        .populate('reporter', 'name email avatar')
+        .populate({
+            path: 'comments',
+            select: 'message createdAt userId attachments',
+            populate: { path: 'userId', select: 'name avatar' }
+        });
 };

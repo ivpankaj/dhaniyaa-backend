@@ -28,7 +28,7 @@ export const createSprint = async (userId: string, data: Partial<ISprint>) => {
                             type: 'sprint_created',
                             entityType: 'Sprint',
                             entityId: sprint._id,
-                            message: `created a new sprint "${sprint.name}" in project ${project.name}`
+                            message: `created a new cycle "${sprint.name}" in project ${project.name}`
                         });
 
                         if (memberUser.email) {
@@ -57,7 +57,7 @@ export const deleteSprint = async (sprintId: string, userId: string) => {
 
     // Verify auth
     if (sprint.createdBy.toString() !== userId) {
-        throw new Error('Unauthorized: Only the creator can delete this sprint');
+        throw new Error('Unauthorized: Only the creator can delete this cycle');
     }
 
     // Notify in background
@@ -80,7 +80,7 @@ export const deleteSprint = async (sprintId: string, userId: string) => {
                             type: 'sprint_deleted',
                             entityType: 'Sprint',
                             entityId: sprint._id,
-                            message: `deleted sprint "${sprint.name}"`
+                            message: `deleted cycle "${sprint.name}"`
                         });
                         if (memberUser.email) {
                             await sendSprintNotificationEmail(memberUser.email, memberUser.name, sprint.name, 'deleted', actionBy);
@@ -116,7 +116,7 @@ export const completeSprint = async (sprintId: string, userId: string) => {
         }
     }, { new: true });
 
-    if (!sprint) throw new Error('Sprint not found');
+    if (!sprint) throw new Error('Cycle not found');
 
     // Move incomplete tickets back to backlog
     await Ticket.updateMany(
@@ -144,7 +144,7 @@ export const completeSprint = async (sprintId: string, userId: string) => {
                             type: 'sprint_completed',
                             entityType: 'Sprint',
                             entityId: sprint._id,
-                            message: `completed sprint "${sprint.name}"`
+                            message: `completed cycle "${sprint.name}"`
                         });
                         if (memberUser.email) {
                             await sendSprintNotificationEmail(memberUser.email, memberUser.name, sprint.name, 'completed', actionBy);

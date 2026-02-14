@@ -18,6 +18,8 @@ export interface IUser extends Document {
     isVerified: boolean;
     globalRole: string;
     organizations: mongoose.Types.ObjectId[];
+    resetPasswordToken?: string;
+    resetPasswordExpire?: Date;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -29,6 +31,8 @@ const UserSchema = new Schema<IUser>({
     isVerified: { type: Boolean, default: false },
     globalRole: { type: String, default: 'user' },
     organizations: [{ type: Schema.Types.ObjectId, ref: 'Organization' }],
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
 }, {
     timestamps: true
 });

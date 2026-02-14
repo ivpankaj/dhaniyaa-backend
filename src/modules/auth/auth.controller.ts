@@ -57,3 +57,21 @@ export const getMe = async (req: any, res: Response, next: NextFunction) => {
         next(error);
     }
 };
+
+export const forgotPassword = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const result = await authService.forgotPassword(req.body.email);
+        res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const resetPassword = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const result = await authService.resetPassword(req.params.token, req.body.password);
+        res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+};

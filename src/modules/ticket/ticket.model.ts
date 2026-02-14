@@ -36,6 +36,7 @@ export interface ITicket extends Document {
     sprintId?: mongoose.Types.ObjectId;
     sprintHistory: mongoose.Types.ObjectId[];
     attachments: string[];
+    watchers: mongoose.Types.ObjectId[];
 }
 
 const TicketSchema = new Schema<ITicket>({
@@ -52,12 +53,18 @@ const TicketSchema = new Schema<ITicket>({
     dueDate: { type: Date },
     sprintId: { type: Schema.Types.ObjectId, ref: 'Sprint' },
     sprintHistory: [{ type: Schema.Types.ObjectId, ref: 'Sprint', default: [] }],
-    attachments: [{ type: String, default: [] }]
+    attachments: [{ type: String, default: [] }],
+    watchers: [{ type: Schema.Types.ObjectId, ref: 'User' }]
 }, {
     timestamps: true
 });
 
 // Text index for search
 TicketSchema.index({ title: 'text', description: 'text' });
+TicketSchema.index({ sprintId: 1 });
+TicketSchema.index({ status: 1 });
+TicketSchema.index({ assignee: 1 });
+TicketSchema.index({ priority: 1 });
+TicketSchema.index({ reporter: 1 });
 
 export const Ticket = mongoose.model<ITicket>('Ticket', TicketSchema);

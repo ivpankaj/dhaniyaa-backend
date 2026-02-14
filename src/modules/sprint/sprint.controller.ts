@@ -14,9 +14,9 @@ export const deleteSprint = async (req: any, res: Response, next: NextFunction) 
     try {
         const sprint = await sprintService.deleteSprint(req.params.id as string, req.user!._id.toString());
         if (!sprint) {
-            return res.status(404).json({ success: false, message: 'Sprint not found or unauthorized' });
+            return res.status(404).json({ success: false, message: 'Cycle not found or unauthorized' });
         }
-        res.status(200).json({ success: true, message: 'Sprint deleted successfully' });
+        res.status(200).json({ success: true, message: 'Cycle deleted successfully' });
     } catch (error) {
         next(error);
     }

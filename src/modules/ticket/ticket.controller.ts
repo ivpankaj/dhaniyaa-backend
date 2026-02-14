@@ -29,8 +29,13 @@ export const getByProject = async (req: any, res: Response, next: NextFunction) 
             return;
         }
 
-        const tickets = await ticketService.getTicketsByProject(projectId, sprintId);
-        res.status(200).json({ success: true, data: tickets });
+        const tickets = await ticketService.getTicketsByProject(projectId, sprintId, {
+            page: parseInt(req.query.page as string) || 1,
+            limit: parseInt(req.query.limit as string) || 50,
+            sortBy: (req.query.sortBy as string) || 'createdAt',
+            sortOrder: (req.query.sortOrder as 'asc' | 'desc') || 'desc'
+        });
+        res.status(200).json({ success: true, ...tickets });
     } catch (error) {
         next(error);
     }
@@ -96,6 +101,32 @@ export const deleteTicket = async (req: any, res: Response, next: NextFunction) 
             return res.status(404).json({ success: false, message: 'Ticket not found or unauthorized' });
         }
         res.status(200).json({ success: true, message: 'Ticket deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const toggleWatch = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const ticket = await ticketService.toggleWatch(req.params.id as string, req.user!._id.toString());
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        res.status(200).json({ success: true, data: ticket });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getById = async (req: any, res: Response, next: NextFunction) => {
+    try {
+        const ticket = await ticketService.getTicketById(req.params.id as string);
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        res.status(200).json({ success: true, data: ticket });
     } catch (error) {
         next(error);
     }

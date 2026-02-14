@@ -89,11 +89,44 @@ Dhaniyaa Team
 };
 
 export const sendSprintNotificationEmail = async (to: string, userName: string, sprintName: string, action: string, actionBy: string) => {
-    const subject = `Sprint Update: ${sprintName}`;
+    const subject = `Cycle Update: ${sprintName}`;
     const body = `
 Hi ${userName},
 
-The sprint "${sprintName}" has been ${action} by ${actionBy}.
+The cycle "${sprintName}" has been ${action} by ${actionBy}.
+
+Best regards,
+Dhaniyaa Team
+`;
+    return sendEmail(to, subject, body.trim());
+};
+
+export const sendWelcomeEmail = async (to: string, userName: string) => {
+    const subject = 'Welcome to Dhaniyaa!';
+    const body = `
+Hi ${userName},
+
+Welcome to Dhaniyaa! We are excited to have you on board.
+Dhaniyaa is designed to help you streamline your workflow and collaborate seamlessly.
+
+If you have any questions, feel free to reply to this email.
+
+Best regards,
+Dhaniyaa Team
+`;
+    return sendEmail(to, subject, body.trim());
+};
+
+export const sendPasswordResetEmail = async (to: string, userName: string, resetUrl: string) => {
+    const subject = 'Password Reset Request';
+    const body = `
+Hi ${userName},
+
+You requested a password reset. Please click the link below to reset your password:
+
+${resetUrl}
+
+If you did not request this, please ignore this email.
 
 Best regards,
 Dhaniyaa Team
