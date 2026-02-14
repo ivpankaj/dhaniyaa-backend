@@ -53,7 +53,7 @@ export const inviteMember = async (req: any, res: Response, next: NextFunction) 
         // Send Email
         const inviterName = req.user!.name;
         // Ideally use env var for frontend URL
-        const loginLink = process.env.FRONTEND_URL || 'http://localhost:3000/login';
+        const loginLink = process.env.FRONTEND_URL || 'https://dhaniyaa.cookmytech.site/login';
 
         await sendEmail(
             email,
