@@ -12,6 +12,7 @@ export interface IProject extends Document {
     organizationId: mongoose.Types.ObjectId;
     members: IProjectMember[];
     createdBy: mongoose.Types.ObjectId;
+    type: string;
     sprints: mongoose.Types.ObjectId[];
 }
 
@@ -26,6 +27,7 @@ const ProjectSchema = new Schema<IProject>({
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
     members: [ProjectMemberSchema],
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    type: { type: String, default: 'Software' },
     sprints: [{ type: Schema.Types.ObjectId, ref: 'Sprint' }]
 }, {
     timestamps: true

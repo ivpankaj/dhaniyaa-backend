@@ -70,10 +70,16 @@ const TicketSchema = new mongoose_1.Schema({
     dueDate: { type: Date },
     sprintId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint' },
     sprintHistory: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint', default: [] }],
-    attachments: [{ type: String, default: [] }]
+    attachments: [{ type: String, default: [] }],
+    watchers: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'User' }]
 }, {
     timestamps: true
 });
 // Text index for search
 TicketSchema.index({ title: 'text', description: 'text' });
+TicketSchema.index({ sprintId: 1 });
+TicketSchema.index({ status: 1 });
+TicketSchema.index({ assignee: 1 });
+TicketSchema.index({ priority: 1 });
+TicketSchema.index({ reporter: 1 });
 exports.Ticket = mongoose_1.default.model('Ticket', TicketSchema);

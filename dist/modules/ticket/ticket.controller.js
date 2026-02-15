@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBySprint = exports.updateStatus = exports.update = exports.getByProject = exports.create = void 0;
+exports.getById = exports.toggleWatch = exports.deleteTicket = exports.getBySprint = exports.updateStatus = exports.update = exports.getByProject = exports.create = void 0;
 const ticketService = __importStar(require("./ticket.service"));
 const activityService = __importStar(require("../activity/activity.service"));
 const create = async (req, res, next) => {
@@ -61,8 +61,13 @@ const getByProject = async (req, res, next) => {
             res.status(400).json({ success: false, message: 'Invalid projectId' });
             return;
         }
-        const tickets = await ticketService.getTicketsByProject(projectId, sprintId);
-        res.status(200).json({ success: true, data: tickets });
+        const tickets = await ticketService.getTicketsByProject(projectId, sprintId, {
+            page: parseInt(req.query.page) || 1,
+            limit: parseInt(req.query.limit) || 50,
+            sortBy: req.query.sortBy || 'createdAt',
+            sortOrder: req.query.sortOrder || 'desc'
+        });
+        res.status(200).json({ success: true, ...tickets });
     }
     catch (error) {
         next(error);
@@ -90,7 +95,8 @@ exports.update = update;
 const updateStatus = async (req, res, next) => {
     try {
         const { status } = req.body;
-        const ticket = await ticketService.updateTicketStatus(req.params.id, status);
+        const ticket = await ticketService.updateTicketStatus(req.params.id, status, req.user._id.toString());
+        console.log(`[Controller] Ticket status updated, awaiting background tasks triggered in service.`);
         if (ticket) {
             const io = req.app.get('io');
             io.to(ticket.projectId.toString()).emit('ticket_updated', ticket);
@@ -120,3 +126,44 @@ const getBySprint = async (req, res, next) => {
     }
 };
 exports.getBySprint = getBySprint;
+const deleteTicket = async (req, res, next) => {
+    try {
+        const ticket = await ticketService.deleteTicket(req.params.id, req.user._id.toString());
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found or unauthorized' });
+        }
+        res.status(200).json({ success: true, message: 'Ticket deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteTicket = deleteTicket;
+const toggleWatch = async (req, res, next) => {
+    try {
+        const ticket = await ticketService.toggleWatch(req.params.id, req.user._id.toString());
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        res.status(200).json({ success: true, data: ticket });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.toggleWatch = toggleWatch;
+const getById = async (req, res, next) => {
+    try {
+        const ticket = await ticketService.getTicketById(req.params.id);
+        if (!ticket) {
+            return res.status(404).json({ success: false, message: 'Ticket not found' });
+        }
+        res.status(200).json({ success: true, data: ticket });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getById = getById;

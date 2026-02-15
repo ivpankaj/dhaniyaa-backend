@@ -16,6 +16,7 @@ const ticket_routes_1 = __importDefault(require("./modules/ticket/ticket.routes"
 const comment_routes_1 = __importDefault(require("./modules/comment/comment.routes"));
 const notification_routes_1 = __importDefault(require("./modules/notification/notification.routes"));
 const sprint_routes_1 = __importDefault(require("./modules/sprint/sprint.routes"));
+const ai_routes_1 = __importDefault(require("./modules/ai/ai.routes"));
 const activity_routes_1 = __importDefault(require("./modules/activity/activity.routes"));
 const invitation_routes_1 = __importDefault(require("./modules/invitation/invitation.routes"));
 const upload_routes_1 = __importDefault(require("./modules/upload/upload.routes"));
@@ -39,6 +40,7 @@ app.use('/api/tickets', ticket_routes_1.default);
 app.use('/api/comments', comment_routes_1.default);
 app.use('/api/notifications', notification_routes_1.default);
 app.use('/api/sprints', sprint_routes_1.default);
+app.use('/api/ai', ai_routes_1.default);
 app.use('/api/activities', activity_routes_1.default);
 app.use('/api/invitations', invitation_routes_1.default);
 app.use('/api/upload', upload_routes_1.default);

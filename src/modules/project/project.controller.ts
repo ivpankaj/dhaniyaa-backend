@@ -13,16 +13,31 @@ export const create = async (req: any, res: Response, next: NextFunction) => {
 export const getByOrg = async (req: any, res: Response, next: NextFunction) => {
     try {
         const organizationId = req.query.organizationId as string;
-        let projects;
+        const search = req.query.search as string;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+
+        let result;
 
         if (organizationId) {
-            projects = await projectService.getProjectsByOrg(organizationId);
+            result = await projectService.getProjectsByOrg(organizationId, search, page, limit);
         } else {
-            // If no org ID provided, return all projects the user is a member of
-            projects = await projectService.getProjectsForUser(req.user!._id.toString());
+            // If no org ID provided, return all projects the user is a member of (with pagination)
+            result = await projectService.getProjectsForUser(req.user!._id.toString(), search, page, limit);
         }
 
-        res.status(200).json({ success: true, data: projects });
+        const { projects, total } = result;
+
+        res.status(200).json({
+            success: true,
+            data: projects,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         next(error);
     }

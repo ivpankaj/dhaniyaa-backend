@@ -33,11 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.complete = exports.update = exports.getByProject = exports.create = void 0;
+exports.complete = exports.update = exports.getByProject = exports.deleteSprint = exports.create = void 0;
 const sprintService = __importStar(require("./sprint.service"));
 const create = async (req, res, next) => {
     try {
-        const sprint = await sprintService.createSprint(req.body);
+        const sprint = await sprintService.createSprint(req.user._id.toString(), req.body);
         res.status(201).json({ success: true, data: sprint });
     }
     catch (error) {
@@ -45,6 +45,19 @@ const create = async (req, res, next) => {
     }
 };
 exports.create = create;
+const deleteSprint = async (req, res, next) => {
+    try {
+        const sprint = await sprintService.deleteSprint(req.params.id, req.user._id.toString());
+        if (!sprint) {
+            return res.status(404).json({ success: false, message: 'Cycle not found or unauthorized' });
+        }
+        res.status(200).json({ success: true, message: 'Cycle deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteSprint = deleteSprint;
 const getByProject = async (req, res, next) => {
     try {
         const sprints = await sprintService.getSprintsByProject(req.query.projectId);
@@ -67,7 +80,7 @@ const update = async (req, res, next) => {
 exports.update = update;
 const complete = async (req, res, next) => {
     try {
-        const sprint = await sprintService.completeSprint(req.params.id);
+        const sprint = await sprintService.completeSprint(req.params.id, req.user._id.toString());
         res.status(200).json({ success: true, data: sprint });
     }
     catch (error) {

@@ -53,6 +53,8 @@ const UserSchema = new mongoose_1.Schema({
     isVerified: { type: Boolean, default: false },
     globalRole: { type: String, default: 'user' },
     organizations: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Organization' }],
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
 }, {
     timestamps: true
 });

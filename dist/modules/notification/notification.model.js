@@ -38,8 +38,8 @@ const mongoose_1 = __importStar(require("mongoose"));
 const NotificationSchema = new mongoose_1.Schema({
     recipient: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     sender: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
-    type: { type: String, enum: ['ASSIGNED', 'COMMENT', 'STATUS_CHANGE', 'MENTION', 'ticket_assigned', 'comment_added'], required: true },
-    entityType: { type: String, enum: ['Ticket', 'Project'], required: true },
+    type: { type: String, enum: ['ASSIGNED', 'COMMENT', 'STATUS_CHANGE', 'MENTION', 'ticket_assigned', 'comment_added', 'ticket_status_change', 'ticket_deleted', 'sprint_created', 'sprint_deleted', 'sprint_completed'], required: true },
+    entityType: { type: String, enum: ['Ticket', 'Project', 'Sprint'], required: true },
     entityId: { type: mongoose_1.Schema.Types.ObjectId, required: true },
     message: { type: String, required: true },
     isRead: { type: Boolean, default: false },

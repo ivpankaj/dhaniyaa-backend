@@ -46,7 +46,8 @@ const SprintSchema = new mongoose_1.Schema({
         totalTickets: { type: Number, default: 0 },
         completedTickets: { type: Number, default: 0 },
         pushedBackTickets: { type: Number, default: 0 }
-    }
+    },
+    createdBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
     timestamps: true
 });

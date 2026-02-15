@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeMemberRole = exports.removeMember = exports.updateProject = exports.addMemberByEmail = exports.getProjectById = exports.getProjectsForUser = exports.getProjectsByOrg = exports.createProject = void 0;
+exports.deleteProject = exports.changeMemberRole = exports.removeMember = exports.updateProject = exports.addMemberByEmail = exports.getProjectById = exports.getProjectsForUser = exports.getProjectsByOrg = exports.createProject = void 0;
 const project_model_1 = require("./project.model");
 const user_model_1 = require("../user/user.model");
 const createProject = async (userId, data) => {
@@ -12,12 +12,39 @@ const createProject = async (userId, data) => {
     return project;
 };
 exports.createProject = createProject;
-const getProjectsByOrg = async (organizationId) => {
-    return await project_model_1.Project.find({ organizationId }).populate('members.userId', 'name email avatar');
+const getProjectsByOrg = async (organizationId, search, page = 1, limit = 10) => {
+    const query = { organizationId };
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
+        ];
+    }
+    const total = await project_model_1.Project.countDocuments(query);
+    const projects = await project_model_1.Project.find(query)
+        .populate('members.userId', 'name email avatar')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+    return { projects, total };
 };
 exports.getProjectsByOrg = getProjectsByOrg;
-const getProjectsForUser = async (userId) => {
-    return await project_model_1.Project.find({ "members.userId": userId }).populate('members.userId', 'name email avatar').populate('organizationId', 'name');
+const getProjectsForUser = async (userId, search, page = 1, limit = 10) => {
+    const query = { "members.userId": userId };
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
+        ];
+    }
+    const total = await project_model_1.Project.countDocuments(query);
+    const projects = await project_model_1.Project.find(query)
+        .populate('members.userId', 'name email avatar')
+        .populate('organizationId', 'name')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+    return { projects, total };
 };
 exports.getProjectsForUser = getProjectsForUser;
 const getProjectById = async (projectId) => {
@@ -77,3 +104,13 @@ const changeMemberRole = async (projectId, userId, newRole) => {
     return await project_model_1.Project.findById(projectId).populate('members.userId', 'name email avatar');
 };
 exports.changeMemberRole = changeMemberRole;
+const deleteProject = async (projectId, userId) => {
+    const project = await project_model_1.Project.findById(projectId);
+    if (!project)
+        return null;
+    if (project.createdBy.toString() !== userId) {
+        throw new Error('Unauthorized: Only the project creator can delete this project');
+    }
+    return await project_model_1.Project.findByIdAndDelete(projectId);
+};
+exports.deleteProject = deleteProject;

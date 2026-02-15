@@ -19,4 +19,5 @@ router.post('/:id/invite', invitation_controller_1.inviteMember);
 router.get('/:id/invitations', invitation_controller_1.getProjectInvitations);
 router.delete('/:id/members/:memberId', project_controller_1.removeMember);
 router.patch('/:id/members/:memberId', project_controller_1.changeMemberRole);
+router.delete('/:id', project_controller_1.deleteProject);
 exports.default = router;

@@ -2,9 +2,26 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.markAllAsRead = exports.markAsRead = exports.getUserNotifications = exports.createNotification = void 0;
 const notification_model_1 = require("./notification.model");
+const socket_1 = require("../../socket");
 const createNotification = async (data) => {
-    const notification = await notification_model_1.Notification.create(data);
-    return await notification.populate('sender', 'name email');
+    try {
+        console.log(`[Notification] Creating notification for: ${data.recipient}, type: ${data.type}`);
+        const notification = await notification_model_1.Notification.create(data);
+        const populated = await notification.populate('sender', 'name email');
+        try {
+            const io = (0, socket_1.getIO)();
+            console.log(`[Notification] Emitting to socket room: ${data.recipient}`);
+            io.to(data.recipient).emit('notification', populated);
+        }
+        catch (err) {
+            console.warn('Socket not initialized or failed to emit notification', err);
+        }
+        return populated;
+    }
+    catch (error) {
+        console.error('[Notification] Error creating notification:', error);
+        throw error;
+    }
 };
 exports.createNotification = createNotification;
 const getUserNotifications = async (userId) => {

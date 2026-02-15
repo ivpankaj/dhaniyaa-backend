@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMe = exports.setPassword = exports.googleLogin = exports.updatePassword = exports.login = exports.register = void 0;
+exports.resetPassword = exports.forgotPassword = exports.getMe = exports.setPassword = exports.googleLogin = exports.updatePassword = exports.login = exports.register = void 0;
 const authService = __importStar(require("./auth.service"));
 const register = async (req, res, next) => {
     try {
@@ -97,3 +97,23 @@ const getMe = async (req, res, next) => {
     }
 };
 exports.getMe = getMe;
+const forgotPassword = async (req, res, next) => {
+    try {
+        const result = await authService.forgotPassword(req.body.email);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.forgotPassword = forgotPassword;
+const resetPassword = async (req, res, next) => {
+    try {
+        const result = await authService.resetPassword(req.params.token, req.body.password);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.resetPassword = resetPassword;

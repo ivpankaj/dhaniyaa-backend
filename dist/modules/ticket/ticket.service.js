@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTicketsBySprint = exports.updateTicketStatus = exports.updateTicket = exports.getTicketsByProject = exports.createTicket = void 0;
+exports.getTicketById = exports.toggleWatch = exports.getTicketsBySprint = exports.deleteTicket = exports.updateTicketStatus = exports.updateTicket = exports.getTicketsByProject = exports.createTicket = void 0;
 const ticket_model_1 = require("./ticket.model");
 const email_service_1 = require("../../utils/email.service");
 const user_model_1 = require("../user/user.model");
 const notification_service_1 = require("../notification/notification.service");
+const background_jobs_1 = require("../../utils/background-jobs");
 const createTicket = async (userId, data) => {
     const ticket = await ticket_model_1.Ticket.create({
         ...data,
@@ -12,32 +13,37 @@ const createTicket = async (userId, data) => {
         sprintHistory: data.sprintId ? [data.sprintId] : []
     });
     if (ticket.assignee) {
-        const assignedUser = await user_model_1.User.findById(ticket.assignee);
-        if (assignedUser) {
-            // Email
-            await (0, email_service_1.sendTicketAssignmentEmail)(assignedUser.email, assignedUser.name, ticket.title, ticket.type, ticket.priority);
-            await (0, notification_service_1.createNotification)({
-                recipient: assignedUser._id.toString(),
-                sender: userId,
-                type: 'ticket_assigned',
-                entityType: 'Ticket',
-                entityId: ticket._id,
-                message: `assigned you to a new ticket: ${ticket.title}`
-            });
-        }
+        // Run in background
+        background_jobs_1.backgroundJobManager.add('ticket_assignment', { ticketId: ticket._id, assigneeId: ticket.assignee, userId }, async (payload) => {
+            const { ticketId, assigneeId, userId } = payload;
+            const assignedUser = await user_model_1.User.findById(assigneeId);
+            const ticket = await ticket_model_1.Ticket.findById(ticketId); // Re-fetch to ensure fresh data if needed, or pass data. Ticket object might be stale if modified quickly
+            if (assignedUser && ticket) {
+                await (0, email_service_1.sendTicketAssignmentEmail)(assignedUser.email, assignedUser.name, ticket.title, ticket.type, ticket.priority);
+                await (0, notification_service_1.createNotification)({
+                    recipient: assignedUser._id.toString(),
+                    sender: userId,
+                    type: 'ticket_assigned',
+                    entityType: 'Ticket',
+                    entityId: ticket._id,
+                    message: `assigned you to a new ticket: ${ticket.title}`
+                });
+            }
+        });
     }
     return ticket;
 };
 exports.createTicket = createTicket;
-const getTicketsByProject = async (projectId, sprintId) => {
+const pagination_1 = require("../../utils/pagination");
+const getTicketsByProject = async (projectId, sprintId, options = {}) => {
     const query = { projectId };
     if (sprintId !== undefined) {
         query.sprintId = sprintId;
     }
-    return await ticket_model_1.Ticket.find(query)
-        .populate('assignee', 'name email avatar')
-        .populate('reporter', 'name email avatar')
-        .sort({ createdAt: -1 });
+    return await (0, pagination_1.paginate)(ticket_model_1.Ticket, query, options, [
+        { path: 'assignee', select: 'name email avatar' },
+        { path: 'reporter', select: 'name email avatar' }
+    ]);
 };
 exports.getTicketsByProject = getTicketsByProject;
 const updateTicket = async (ticketId, updates) => {
@@ -51,27 +57,134 @@ const updateTicket = async (ticketId, updates) => {
         });
     }
     if (ticket && updates.assignee && updates.assignee.toString() !== oldTicket?.assignee?.toString()) {
-        const assignedUser = ticket.assignee; // Populated
-        if (assignedUser && assignedUser.email) {
-            // Email
-            await (0, email_service_1.sendTicketAssignmentEmail)(assignedUser.email, assignedUser.name, ticket.title, ticket.type, ticket.priority);
-            await (0, notification_service_1.createNotification)({
-                recipient: assignedUser._id.toString(),
-                sender: ticket.reporter?._id?.toString() || ticket.reporter,
-                type: 'ticket_assigned',
-                entityType: 'Ticket',
-                entityId: ticket._id,
-                message: `re-assigned you to a ticket: ${ticket.title}`
-            });
-        }
+        background_jobs_1.backgroundJobManager.add('ticket_reassignment', { ticketId: ticket._id, assignee: ticket.assignee, reporter: ticket.reporter }, async (payload) => {
+            const { ticketId, assignee, reporter } = payload;
+            const assignedUser = assignee; // Already populated in `ticket` but might need to double check if passed object is populated. Safe to use ID if needed.
+            // If populated, great. If not, fetch.
+            // Strategy: Pass IDs and fetch strictly in job to avoid stale data issues or circular dependency issues with 'populate'.
+            // Simplification: Re-fetch user in job.
+            const targetUser = await user_model_1.User.findById(assignedUser._id || assignedUser);
+            const reporterUser = await user_model_1.User.findById(reporter._id || reporter);
+            const currentTicket = await ticket_model_1.Ticket.findById(ticketId);
+            if (targetUser && targetUser.email && currentTicket) {
+                await (0, email_service_1.sendTicketAssignmentEmail)(targetUser.email, targetUser.name, currentTicket.title, currentTicket.type, currentTicket.priority);
+                await (0, notification_service_1.createNotification)({
+                    recipient: targetUser._id.toString(),
+                    sender: reporterUser?._id.toString() || 'system',
+                    type: 'ticket_assigned',
+                    entityType: 'Ticket',
+                    entityId: currentTicket._id,
+                    message: `re-assigned you to a ticket: ${currentTicket.title}`
+                });
+            }
+        });
     }
     return ticket;
 };
 exports.updateTicket = updateTicket;
-const updateTicketStatus = async (ticketId, status) => {
-    return await ticket_model_1.Ticket.findByIdAndUpdate(ticketId, { status }, { new: true });
+const updateTicketStatus = async (ticketId, status, userId) => {
+    console.log(`[Service] updateTicketStatus called for ticket ${ticketId}, status: ${status}, user: ${userId}`);
+    const ticket = await ticket_model_1.Ticket.findByIdAndUpdate(ticketId, { status }, { new: true })
+        .populate('assignee', 'name email')
+        .populate('reporter', 'name email');
+    if (!ticket)
+        return null;
+    // Run notifications in background queue
+    background_jobs_1.backgroundJobManager.add('ticket_status_update', { ticketId: ticket._id, status, userId }, async (payload) => {
+        const { ticketId, status, userId } = payload;
+        const ticket = await ticket_model_1.Ticket.findById(ticketId).populate('assignee').populate('reporter');
+        if (!ticket)
+            return;
+        try {
+            console.log(`[BackgroundJob] Starting notification logic for ticket ${ticket._id} status update`);
+            const currentUser = await user_model_1.User.findById(userId);
+            const actorName = currentUser?.name || 'Unknown';
+            const reporter = ticket.reporter;
+            const assignee = ticket.assignee;
+            const reporterId = reporter?._id?.toString();
+            const assigneeId = assignee?._id?.toString();
+            // Notify Reporter
+            if (reporterId && reporterId !== userId) { // Don't notify self
+                await (0, notification_service_1.createNotification)({
+                    recipient: reporterId,
+                    sender: userId,
+                    type: 'ticket_status_change',
+                    entityType: 'Ticket',
+                    entityId: ticket._id,
+                    message: `updated ticket "${ticket.title}" status to ${status}`
+                });
+                if (reporter?.email) {
+                    try {
+                        await (0, email_service_1.sendTicketStatusEmail)(reporter.email, reporter.name, ticket.title, status, actorName);
+                    }
+                    catch (e) {
+                        console.error(e);
+                    }
+                }
+            }
+            // Notify Assignee
+            if (assigneeId && assigneeId !== reporterId && assigneeId !== userId) { // Don't notify self or if already notified as reporter
+                await (0, notification_service_1.createNotification)({
+                    recipient: assigneeId,
+                    sender: userId,
+                    type: 'ticket_status_change',
+                    entityType: 'Ticket',
+                    entityId: ticket._id,
+                    message: `updated ticket "${ticket.title}" status to ${status}`
+                });
+                if (assignee?.email) {
+                    try {
+                        await (0, email_service_1.sendTicketStatusEmail)(assignee.email, assignee.name, ticket.title, status, actorName);
+                    }
+                    catch (e) {
+                        console.error(e);
+                    }
+                }
+            }
+        }
+        catch (error) {
+            console.error('Failed to send status update notification', error);
+        }
+    });
+    return ticket;
 };
 exports.updateTicketStatus = updateTicketStatus;
+const deleteTicket = async (ticketId, userId) => {
+    const ticket = await ticket_model_1.Ticket.findById(ticketId).populate('assignee', 'name email');
+    if (!ticket)
+        return null;
+    if (ticket.reporter.toString() !== userId) {
+        const error = new Error('Unauthorized: Only the reporter can delete this ticket');
+        error.statusCode = 403;
+        throw error;
+    }
+    // Run notifications in background queue
+    background_jobs_1.backgroundJobManager.add('ticket_deletion', { ticketId: ticket._id, title: ticket.title, assigneeId: ticket.assignee?._id, assigneeEmail: ticket.assignee?.email, assigneeName: ticket.assignee?.name, userId }, async (payload) => {
+        const { ticketId, title, assigneeId, assigneeEmail, assigneeName, userId } = payload;
+        try {
+            const currentUser = await user_model_1.User.findById(userId);
+            const actorName = currentUser?.name || 'Unknown';
+            if (assigneeId && assigneeId.toString() !== userId) {
+                await (0, notification_service_1.createNotification)({
+                    recipient: assigneeId.toString(),
+                    sender: userId,
+                    type: 'ticket_deleted',
+                    entityType: 'Ticket',
+                    entityId: ticketId, // Note: Ticket won't exist in DB, but ID reference persists in notification
+                    message: `deleted ticket "${title}"`
+                });
+                if (assigneeEmail) {
+                    await (0, email_service_1.sendTicketDeletionEmail)(assigneeEmail, assigneeName, title, actorName);
+                }
+            }
+        }
+        catch (e) {
+            console.error('Failed to notify assignee about ticket deletion', e);
+        }
+    });
+    return await ticket_model_1.Ticket.findByIdAndDelete(ticketId);
+};
+exports.deleteTicket = deleteTicket;
 const getTicketsBySprint = async (sprintId) => {
     return await ticket_model_1.Ticket.find({
         $or: [
@@ -84,3 +197,27 @@ const getTicketsBySprint = async (sprintId) => {
         .sort({ status: 1 });
 };
 exports.getTicketsBySprint = getTicketsBySprint;
+const toggleWatch = async (ticketId, userId) => {
+    const ticket = await ticket_model_1.Ticket.findById(ticketId);
+    if (!ticket)
+        return null;
+    const isWatching = ticket.watchers.some(w => w.toString() === userId);
+    if (isWatching) {
+        return await ticket_model_1.Ticket.findByIdAndUpdate(ticketId, { $pull: { watchers: userId } }, { new: true });
+    }
+    else {
+        return await ticket_model_1.Ticket.findByIdAndUpdate(ticketId, { $addToSet: { watchers: userId } }, { new: true });
+    }
+};
+exports.toggleWatch = toggleWatch;
+const getTicketById = async (ticketId) => {
+    return await ticket_model_1.Ticket.findById(ticketId)
+        .populate('assignee', 'name email avatar')
+        .populate('reporter', 'name email avatar')
+        .populate({
+        path: 'comments',
+        select: 'message createdAt userId attachments',
+        populate: { path: 'userId', select: 'name avatar' }
+    });
+};
+exports.getTicketById = getTicketById;

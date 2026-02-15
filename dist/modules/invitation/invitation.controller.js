@@ -47,8 +47,8 @@ const inviteMember = async (req, res, next) => {
         // Send Email
         const inviterName = req.user.name;
         // Ideally use env var for frontend URL
-        const loginLink = process.env.FRONTEND_URL || 'http://localhost:3000/login';
-        await (0, email_service_1.sendEmail)(email, `Invitation to join ${project.name} on Dhaniyaa`, `Hello,\n\n${inviterName} has invited you to join the project "${project.name}" on Dhaniyaa.\n\nDescription: ${project.description || 'No description'}\n\nPlease click the link below to log in and accept the invitation:\n${loginLink}\n\nBest regards,\nThe Dhaniyaa Team`);
+        const loginLink = process.env.FRONTEND_URL || 'https://dhaniyaa.cookmytech.site/login';
+        await (0, email_service_1.sendInvitationEmail)(email, inviterName, project.name, project.description || '', loginLink);
         res.status(201).json({ success: true, data: invitation });
     }
     catch (error) {

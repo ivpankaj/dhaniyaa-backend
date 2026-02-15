@@ -46,6 +46,7 @@ const ProjectSchema = new mongoose_1.Schema({
     organizationId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Organization', required: true, index: true },
     members: [ProjectMemberSchema],
     createdBy: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+    type: { type: String, default: 'Software' },
     sprints: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Sprint' }]
 }, {
     timestamps: true

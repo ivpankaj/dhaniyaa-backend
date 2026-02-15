@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeMemberRole = exports.removeMember = exports.update = exports.invite = exports.getOne = exports.getByOrg = exports.create = void 0;
+exports.deleteProject = exports.changeMemberRole = exports.removeMember = exports.update = exports.invite = exports.getOne = exports.getByOrg = exports.create = void 0;
 const projectService = __importStar(require("./project.service"));
 const create = async (req, res, next) => {
     try {
@@ -48,15 +48,28 @@ exports.create = create;
 const getByOrg = async (req, res, next) => {
     try {
         const organizationId = req.query.organizationId;
-        let projects;
+        const search = req.query.search;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        let result;
         if (organizationId) {
-            projects = await projectService.getProjectsByOrg(organizationId);
+            result = await projectService.getProjectsByOrg(organizationId, search, page, limit);
         }
         else {
-            // If no org ID provided, return all projects the user is a member of
-            projects = await projectService.getProjectsForUser(req.user._id.toString());
+            // If no org ID provided, return all projects the user is a member of (with pagination)
+            result = await projectService.getProjectsForUser(req.user._id.toString(), search, page, limit);
         }
-        res.status(200).json({ success: true, data: projects });
+        const { projects, total } = result;
+        res.status(200).json({
+            success: true,
+            data: projects,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        });
     }
     catch (error) {
         next(error);
@@ -122,3 +135,18 @@ const changeMemberRole = async (req, res, next) => {
     }
 };
 exports.changeMemberRole = changeMemberRole;
+const deleteProject = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const project = await projectService.deleteProject(id, req.user._id.toString());
+        if (!project) {
+            res.status(404).json({ success: false, message: 'Project not found' });
+            return;
+        }
+        res.status(200).json({ success: true, message: 'Project deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteProject = deleteProject;

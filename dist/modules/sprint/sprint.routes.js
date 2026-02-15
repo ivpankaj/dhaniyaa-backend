@@ -12,4 +12,5 @@ router.post('/', sprint_controller_1.create);
 router.get('/', sprint_controller_1.getByProject);
 router.patch('/:id', sprint_controller_1.update);
 router.patch('/:id/complete', sprint_controller_1.complete);
+router.delete('/:id', sprint_controller_1.deleteSprint);
 exports.default = router;

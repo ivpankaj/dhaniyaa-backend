@@ -7,7 +7,10 @@ exports.connectDatabase = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDatabase = async () => {
     try {
-        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/dhaniyaa';
+        const mongoUri = process.env.MONGO_URI;
+        if (!mongoUri) {
+            throw new Error('MONGO_URI is not defined');
+        }
         await mongoose_1.default.connect(mongoUri);
         console.log('MongoDB Connected');
     }

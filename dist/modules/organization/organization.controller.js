@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.invite = exports.getMyOrgs = exports.createOrg = void 0;
+exports.deleteOrganization = exports.invite = exports.getMyOrgs = exports.createOrg = void 0;
 const organizationService = __importStar(require("./organization.service"));
 const createOrg = async (req, res, next) => {
     try {
@@ -69,3 +69,18 @@ const invite = async (req, res, next) => {
     }
 };
 exports.invite = invite;
+const deleteOrganization = async (req, res, next) => {
+    try {
+        const id = req.params.id;
+        const org = await organizationService.deleteOrganization(id, req.user._id.toString());
+        if (!org) {
+            res.status(404).json({ success: false, message: 'Organization not found' });
+            return;
+        }
+        res.status(200).json({ success: true, message: 'Organization deleted successfully' });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.deleteOrganization = deleteOrganization;

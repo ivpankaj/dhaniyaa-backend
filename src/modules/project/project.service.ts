@@ -2,7 +2,7 @@ import { Project, IProject } from './project.model';
 import { User, UserRole } from '../user/user.model';
 import mongoose from 'mongoose';
 
-export const createProject = async (userId: string, data: { name: string; description?: string; organizationId: string }) => {
+export const createProject = async (userId: string, data: { name: string; description?: string; organizationId: string; type?: string }) => {
     const project = await Project.create({
         ...data,
         createdBy: userId,
@@ -11,12 +11,45 @@ export const createProject = async (userId: string, data: { name: string; descri
     return project;
 };
 
-export const getProjectsByOrg = async (organizationId: string) => {
-    return await Project.find({ organizationId }).populate('members.userId', 'name email avatar');
+export const getProjectsByOrg = async (organizationId: string, search?: string, page: number = 1, limit: number = 10) => {
+    const query: any = { organizationId };
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const total = await Project.countDocuments(query);
+    const projects = await Project.find(query)
+        .populate('members.userId', 'name email avatar')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+
+    return { projects, total };
 };
 
-export const getProjectsForUser = async (userId: string) => {
-    return await Project.find({ "members.userId": userId }).populate('members.userId', 'name email avatar').populate('organizationId', 'name');
+export const getProjectsForUser = async (userId: string, search?: string, page: number = 1, limit: number = 10) => {
+    const query: any = { "members.userId": userId };
+
+    if (search) {
+        query.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { description: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const total = await Project.countDocuments(query);
+    const projects = await Project.find(query)
+        .populate('members.userId', 'name email avatar')
+        .populate('organizationId', 'name')
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .sort({ createdAt: -1 });
+
+    return { projects, total };
 };
 
 export const getProjectById = async (projectId: string) => {
@@ -41,7 +74,7 @@ export const addMemberByEmail = async (projectId: string, email: string) => {
     return await project.save();
 };
 
-export const updateProject = async (projectId: string, data: { name?: string; key?: string; description?: string }) => {
+export const updateProject = async (projectId: string, data: { name?: string; key?: string; description?: string; type?: string }) => {
     const project = await Project.findByIdAndUpdate(
         projectId,
         { $set: data },

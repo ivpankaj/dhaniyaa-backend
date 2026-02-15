@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.inviteMember = exports.getUserOrganizations = exports.createOrganization = void 0;
+exports.deleteOrganization = exports.inviteMember = exports.getUserOrganizations = exports.createOrganization = void 0;
 const organization_model_1 = require("./organization.model");
 const user_model_1 = require("../user/user.model");
 const createOrganization = async (userId, name) => {
@@ -50,3 +50,13 @@ const inviteMember = async (organizationId, email) => {
     return organization;
 };
 exports.inviteMember = inviteMember;
+const deleteOrganization = async (organizationId, userId) => {
+    const organization = await organization_model_1.Organization.findById(organizationId);
+    if (!organization)
+        return null;
+    if (organization.owner.toString() !== userId) {
+        throw new Error('Unauthorized: Only the organization owner can delete this organization');
+    }
+    return await organization_model_1.Organization.findByIdAndDelete(organizationId);
+};
+exports.deleteOrganization = deleteOrganization;

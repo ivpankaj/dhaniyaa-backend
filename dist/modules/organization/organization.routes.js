@@ -13,4 +13,5 @@ router.use(auth_middleware_1.protect);
 router.post('/', (0, validate_middleware_1.validate)(organization_validation_1.createOrgSchema), organization_controller_1.createOrg);
 router.get('/', organization_controller_1.getMyOrgs);
 router.post('/:id/invite', organization_controller_1.invite);
+router.delete('/:id', organization_controller_1.deleteOrganization);
 exports.default = router;
