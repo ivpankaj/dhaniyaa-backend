@@ -2,12 +2,33 @@ import { Project, IProject } from './project.model';
 import { User, UserRole } from '../user/user.model';
 import mongoose from 'mongoose';
 
+import { createSprint } from '../sprint/sprint.service';
+
 export const createProject = async (userId: string, data: { name: string; description?: string; organizationId: string; type?: string }) => {
     const project = await Project.create({
         ...data,
         createdBy: userId,
         members: [{ userId: userId, role: UserRole.PROJECT_ADMIN }]
     });
+
+    // Automatically create the first cycle (sprint) for the project
+    try {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + 14); // Default 2 week cycle
+
+        await createSprint(userId, {
+            name: 'Cycle 1',
+            projectId: project._id as any,
+            startDate,
+            endDate,
+            goal: 'Initial setup and planning',
+            status: 'PLANNED'
+        });
+    } catch (error) {
+        console.error('Failed to create automatic cycle for project:', error);
+    }
+
     return project;
 };
 
@@ -26,7 +47,8 @@ export const getProjectsByOrg = async (organizationId: string, search?: string, 
         .populate('members.userId', 'name email avatar')
         .skip((page - 1) * limit)
         .limit(limit)
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
 
     return { projects, total };
 };
@@ -47,13 +69,14 @@ export const getProjectsForUser = async (userId: string, search?: string, page: 
         .populate('organizationId', 'name')
         .skip((page - 1) * limit)
         .limit(limit)
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
 
     return { projects, total };
 };
 
 export const getProjectById = async (projectId: string) => {
-    return await Project.findById(projectId).populate('members.userId', 'name email avatar');
+    return await Project.findById(projectId).populate('members.userId', 'name email avatar').lean();
 }
 
 export const addMemberByEmail = async (projectId: string, email: string) => {

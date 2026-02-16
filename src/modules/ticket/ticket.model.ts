@@ -61,6 +61,13 @@ const TicketSchema = new Schema<ITicket>({
 
 // Text index for search
 TicketSchema.index({ title: 'text', description: 'text' });
+
+// Compound indices for common query patterns
+TicketSchema.index({ projectId: 1, sprintId: 1 });
+TicketSchema.index({ projectId: 1, status: 1 });
+TicketSchema.index({ organizationId: 1, status: 1 });
+TicketSchema.index({ assignee: 1, status: 1 });
+
 TicketSchema.index({ sprintId: 1 });
 TicketSchema.index({ status: 1 });
 TicketSchema.index({ assignee: 1 });

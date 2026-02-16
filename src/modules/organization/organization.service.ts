@@ -21,8 +21,8 @@ export const createOrganization = async (userId: string, name: string) => {
 };
 
 export const getUserOrganizations = async (userId: string) => {
-    const user = await User.findById(userId).populate('organizations');
-    return user?.organizations || [];
+    const user = await User.findById(userId).populate('organizations').lean();
+    return (user as any)?.organizations || [];
 };
 
 export const inviteMember = async (organizationId: string, email: string) => {

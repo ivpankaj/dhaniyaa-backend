@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendInvitationEmail = exports.sendPasswordResetEmail = exports.sendWelcomeEmail = exports.sendSprintNotificationEmail = exports.sendTicketDeletionEmail = exports.sendTicketStatusEmail = exports.sendTicketAssignmentEmail = exports.sendEmail = void 0;
+exports.sendInvitationEmail = exports.sendPasswordResetEmail = exports.sendWelcomeEmail = exports.sendSprintNotificationEmail = exports.sendTicketDeletionEmail = exports.sendTicketStatusEmail = exports.sendTicketCreationEmail = exports.sendTicketAssignmentEmail = exports.sendEmail = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const getHtmlTemplate = (title, bodyContent, actionUrl, actionText) => {
     return `
@@ -40,7 +40,7 @@ const getHtmlTemplate = (title, bodyContent, actionUrl, actionText) => {
         .logo {
             font-size: 24px;
             font-weight: 800;
-            color: #10b981; /* Emerald-500 equivalent */
+            color: #8b5cf6; /* Violet-500 equivalent */
             text-decoration: none;
             letter-spacing: -0.5px;
         }
@@ -91,7 +91,7 @@ const getHtmlTemplate = (title, bodyContent, actionUrl, actionText) => {
         }
         .btn {
             display: inline-block;
-            background-color: #10b981;
+            background-color: #8b5cf6;
             color: #ffffff;
             font-weight: 600;
             padding: 12px 32px;
@@ -205,6 +205,32 @@ const sendTicketAssignmentEmail = async (to, userName, ticketTitle, ticketType, 
     return (0, exports.sendEmail)(to, subject, html);
 };
 exports.sendTicketAssignmentEmail = sendTicketAssignmentEmail;
+const sendTicketCreationEmail = async (to, userName, ticketTitle, ticketType, priority) => {
+    const title = `Ticket Created`;
+    const subject = `Confirmation: Ticket Created - ${ticketTitle}`;
+    const bodyContent = `
+        <p>Hi ${userName},</p>
+        <p>Your ticket has been successfully created in Dhaniyaa. Our team (or yourself) will get to it soon!</p>
+        
+        <div class="highlight-box">
+            <div class="highlight-item">
+                <span class="label">Ticket</span><br>
+                <span class="value">${ticketTitle}</span>
+            </div>
+            <div class="highlight-item" style="margin-top: 12px;">
+                <span class="label">Type</span><br>
+                <span class="value">${ticketType}</span>
+            </div>
+            <div class="highlight-item" style="margin-top: 12px;">
+                <span class="label">Priority</span><br>
+                <span class="value" style="color: ${priority === 'High' || priority === 'Critical' ? '#ef4444' : 'inherit'}">${priority}</span>
+            </div>
+        </div>
+    `;
+    const html = getHtmlTemplate(title, bodyContent, process.env.FRONTEND_URL || 'https://dhaniyaa.cookmytech.site', 'View Ticket');
+    return (0, exports.sendEmail)(to, subject, html);
+};
+exports.sendTicketCreationEmail = sendTicketCreationEmail;
 const sendTicketStatusEmail = async (to, userName, ticketTitle, status, actionBy) => {
     const title = `Status Update`;
     const subject = `Ticket Updated: ${ticketTitle}`;

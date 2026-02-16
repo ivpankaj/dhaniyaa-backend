@@ -43,6 +43,7 @@ const axios_1 = __importDefault(require("axios"));
 const userRepository = __importStar(require("../user/user.repository"));
 const token_1 = require("../../utils/token");
 const email_service_1 = require("../../utils/email.service");
+const onboarding_service_1 = require("./onboarding.service");
 const registerUser = async (data) => {
     const { name, email, password } = data;
     if (!name || !email || !password) {
@@ -68,6 +69,8 @@ const registerUser = async (data) => {
     catch (error) {
         console.error('Failed to send welcome email:', error);
     }
+    // Auto-create Workspace, Project and Cycle
+    await (0, onboarding_service_1.setupNewUserWorkspace)(user._id.toString(), user.name);
     return {
         _id: user._id,
         name: user.name,
@@ -167,6 +170,8 @@ const googleLogin = async (idToken, googleAvatar) => {
             catch (error) {
                 console.error('Failed to send welcome email:', error);
             }
+            // Auto-create Workspace, Project and Cycle
+            await (0, onboarding_service_1.setupNewUserWorkspace)(user._id.toString(), user.name);
         }
         else {
             // Update existing user google info if missing

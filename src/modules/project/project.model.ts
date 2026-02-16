@@ -33,4 +33,9 @@ const ProjectSchema = new Schema<IProject>({
     timestamps: true
 });
 
+// Indices for fast lookups
+ProjectSchema.index({ 'members.userId': 1 });
+ProjectSchema.index({ createdBy: 1 });
+ProjectSchema.index({ organizationId: 1 });
+
 export const Project = mongoose.model<IProject>('Project', ProjectSchema);

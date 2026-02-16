@@ -35,7 +35,7 @@ const getHtmlTemplate = (title: string, bodyContent: string, actionUrl?: string,
         .logo {
             font-size: 24px;
             font-weight: 800;
-            color: #10b981; /* Emerald-500 equivalent */
+            color: #8b5cf6; /* Violet-500 equivalent */
             text-decoration: none;
             letter-spacing: -0.5px;
         }
@@ -86,7 +86,7 @@ const getHtmlTemplate = (title: string, bodyContent: string, actionUrl?: string,
         }
         .btn {
             display: inline-block;
-            background-color: #10b981;
+            background-color: #8b5cf6;
             color: #ffffff;
             font-weight: 600;
             padding: 12px 32px;
@@ -203,6 +203,34 @@ export const sendTicketAssignmentEmail = async (to: string, userName: string, ti
     `;
 
     const html = getHtmlTemplate(title, bodyContent, process.env.FRONTEND_URL || 'https://dhaniyaa.cookmytech.site', 'View Task');
+    return sendEmail(to, subject, html);
+};
+
+export const sendTicketCreationEmail = async (to: string, userName: string, ticketTitle: string, ticketType: string, priority: string) => {
+    const title = `Ticket Created`;
+    const subject = `Confirmation: Ticket Created - ${ticketTitle}`;
+
+    const bodyContent = `
+        <p>Hi ${userName},</p>
+        <p>Your ticket has been successfully created in Dhaniyaa. Our team (or yourself) will get to it soon!</p>
+        
+        <div class="highlight-box">
+            <div class="highlight-item">
+                <span class="label">Ticket</span><br>
+                <span class="value">${ticketTitle}</span>
+            </div>
+            <div class="highlight-item" style="margin-top: 12px;">
+                <span class="label">Type</span><br>
+                <span class="value">${ticketType}</span>
+            </div>
+            <div class="highlight-item" style="margin-top: 12px;">
+                <span class="label">Priority</span><br>
+                <span class="value" style="color: ${priority === 'High' || priority === 'Critical' ? '#ef4444' : 'inherit'}">${priority}</span>
+            </div>
+        </div>
+    `;
+
+    const html = getHtmlTemplate(title, bodyContent, process.env.FRONTEND_URL || 'https://dhaniyaa.cookmytech.site', 'View Ticket');
     return sendEmail(to, subject, html);
 };
 

@@ -31,7 +31,8 @@ export const paginate = async <T>(
     const dataPromise = model.find(query)
         .sort({ [options.sortBy || 'createdAt']: options.sortOrder === 'asc' ? 1 : -1 })
         .skip(skip)
-        .limit(limit);
+        .limit(limit)
+        .lean();
 
     // Apply population
     populate.forEach(p => {

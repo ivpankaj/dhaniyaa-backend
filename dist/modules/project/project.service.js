@@ -3,12 +3,30 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteProject = exports.changeMemberRole = exports.removeMember = exports.updateProject = exports.addMemberByEmail = exports.getProjectById = exports.getProjectsForUser = exports.getProjectsByOrg = exports.createProject = void 0;
 const project_model_1 = require("./project.model");
 const user_model_1 = require("../user/user.model");
+const sprint_service_1 = require("../sprint/sprint.service");
 const createProject = async (userId, data) => {
     const project = await project_model_1.Project.create({
         ...data,
         createdBy: userId,
         members: [{ userId: userId, role: user_model_1.UserRole.PROJECT_ADMIN }]
     });
+    // Automatically create the first cycle (sprint) for the project
+    try {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + 14); // Default 2 week cycle
+        await (0, sprint_service_1.createSprint)(userId, {
+            name: 'Cycle 1',
+            projectId: project._id,
+            startDate,
+            endDate,
+            goal: 'Initial setup and planning',
+            status: 'PLANNED'
+        });
+    }
+    catch (error) {
+        console.error('Failed to create automatic cycle for project:', error);
+    }
     return project;
 };
 exports.createProject = createProject;

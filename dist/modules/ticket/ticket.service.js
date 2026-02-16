@@ -17,20 +17,29 @@ const createTicket = async (userId, data) => {
         background_jobs_1.backgroundJobManager.add('ticket_assignment', { ticketId: ticket._id, assigneeId: ticket.assignee, userId }, async (payload) => {
             const { ticketId, assigneeId, userId } = payload;
             const assignedUser = await user_model_1.User.findById(assigneeId);
-            const ticket = await ticket_model_1.Ticket.findById(ticketId); // Re-fetch to ensure fresh data if needed, or pass data. Ticket object might be stale if modified quickly
-            if (assignedUser && ticket) {
-                await (0, email_service_1.sendTicketAssignmentEmail)(assignedUser.email, assignedUser.name, ticket.title, ticket.type, ticket.priority);
+            const ticketData = await ticket_model_1.Ticket.findById(ticketId);
+            if (assignedUser && ticketData) {
+                await (0, email_service_1.sendTicketAssignmentEmail)(assignedUser.email, assignedUser.name, ticketData.title, ticketData.type, ticketData.priority);
                 await (0, notification_service_1.createNotification)({
                     recipient: assignedUser._id.toString(),
                     sender: userId,
                     type: 'ticket_assigned',
                     entityType: 'Ticket',
-                    entityId: ticket._id,
-                    message: `assigned you to a new ticket: ${ticket.title}`
+                    entityId: ticketData._id,
+                    message: `assigned you to a new ticket: ${ticketData.title}`
                 });
             }
         });
     }
+    // Notify Creator
+    background_jobs_1.backgroundJobManager.add('ticket_creation', { ticketId: ticket._id, userId }, async (payload) => {
+        const { ticketId, userId } = payload;
+        const creator = await user_model_1.User.findById(userId);
+        const ticketData = await ticket_model_1.Ticket.findById(ticketId);
+        if (creator && ticketData) {
+            await (0, email_service_1.sendTicketCreationEmail)(creator.email, creator.name, ticketData.title, ticketData.type, ticketData.priority);
+        }
+    });
     return ticket;
 };
 exports.createTicket = createTicket;
@@ -139,6 +148,15 @@ const updateTicketStatus = async (ticketId, status, userId) => {
                     catch (e) {
                         console.error(e);
                     }
+                }
+            }
+            // Also notify the person who made the change (as specifically requested)
+            if (currentUser?.email) {
+                try {
+                    await (0, email_service_1.sendTicketStatusEmail)(currentUser.email, currentUser.name, ticket.title, status, 'You');
+                }
+                catch (e) {
+                    console.error('Failed to send confirmation email to the actor', e);
                 }
             }
         }

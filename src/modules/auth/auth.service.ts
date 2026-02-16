@@ -5,6 +5,7 @@ import * as userRepository from '../user/user.repository';
 import { generateToken } from '../../utils/token';
 import { sendPasswordResetEmail, sendWelcomeEmail } from '../../utils/email.service';
 import { IUser } from '../user/user.model';
+import { setupNewUserWorkspace } from './onboarding.service';
 
 export const registerUser = async (data: Partial<IUser>) => {
     const { name, email, password } = data;
@@ -35,6 +36,9 @@ export const registerUser = async (data: Partial<IUser>) => {
     } catch (error) {
         console.error('Failed to send welcome email:', error);
     }
+
+    // Auto-create Workspace, Project and Cycle
+    await setupNewUserWorkspace(user._id.toString(), user.name);
 
     return {
         _id: user._id,
@@ -151,6 +155,9 @@ export const googleLogin = async (idToken: string, googleAvatar?: string) => {
             } catch (error) {
                 console.error('Failed to send welcome email:', error);
             }
+
+            // Auto-create Workspace, Project and Cycle
+            await setupNewUserWorkspace(user._id.toString(), user.name);
         } else {
             // Update existing user google info if missing
             if (!user.googleId) user.googleId = sub;

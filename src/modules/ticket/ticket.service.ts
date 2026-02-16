@@ -1,5 +1,5 @@
 import { Ticket, ITicket, TicketStatus } from './ticket.model';
-import { sendTicketAssignmentEmail, sendTicketStatusEmail, sendTicketDeletionEmail } from '../../utils/email.service';
+import { sendTicketAssignmentEmail, sendTicketStatusEmail, sendTicketDeletionEmail, sendTicketCreationEmail } from '../../utils/email.service';
 import { User } from '../user/user.model';
 import { createNotification } from '../notification/notification.service';
 import { backgroundJobManager } from '../../utils/background-jobs';
@@ -16,15 +16,15 @@ export const createTicket = async (userId: string, data: Partial<ITicket>) => {
         backgroundJobManager.add('ticket_assignment', { ticketId: ticket._id, assigneeId: ticket.assignee, userId }, async (payload) => {
             const { ticketId, assigneeId, userId } = payload;
             const assignedUser = await User.findById(assigneeId);
-            const ticket = await Ticket.findById(ticketId); // Re-fetch to ensure fresh data if needed, or pass data. Ticket object might be stale if modified quickly
+            const ticketData = await Ticket.findById(ticketId);
 
-            if (assignedUser && ticket) {
+            if (assignedUser && ticketData) {
                 await sendTicketAssignmentEmail(
                     assignedUser.email,
                     assignedUser.name,
-                    ticket.title,
-                    ticket.type,
-                    ticket.priority
+                    ticketData.title,
+                    ticketData.type,
+                    ticketData.priority
                 );
 
                 await createNotification({
@@ -32,12 +32,29 @@ export const createTicket = async (userId: string, data: Partial<ITicket>) => {
                     sender: userId,
                     type: 'ticket_assigned',
                     entityType: 'Ticket',
-                    entityId: ticket._id,
-                    message: `assigned you to a new ticket: ${ticket.title}`
+                    entityId: ticketData._id,
+                    message: `assigned you to a new ticket: ${ticketData.title}`
                 });
             }
         });
     }
+
+    // Notify Creator
+    backgroundJobManager.add('ticket_creation', { ticketId: ticket._id, userId }, async (payload) => {
+        const { ticketId, userId } = payload;
+        const creator = await User.findById(userId);
+        const ticketData = await Ticket.findById(ticketId);
+
+        if (creator && ticketData) {
+            await sendTicketCreationEmail(
+                creator.email,
+                creator.name,
+                ticketData.title,
+                ticketData.type,
+                ticketData.priority
+            );
+        }
+    });
 
     return ticket;
 };
@@ -161,6 +178,15 @@ export const updateTicketStatus = async (ticketId: string, status: TicketStatus,
                     } catch (e) { console.error(e); }
                 }
             }
+
+            // Also notify the person who made the change (as specifically requested)
+            if (currentUser?.email) {
+                try {
+                    await sendTicketStatusEmail(currentUser.email, currentUser.name, ticket.title, status, 'You');
+                } catch (e) {
+                    console.error('Failed to send confirmation email to the actor', e);
+                }
+            }
         } catch (error) {
             console.error('Failed to send status update notification', error);
         }
@@ -216,7 +242,8 @@ export const getTicketsBySprint = async (sprintId: string) => {
     })
         .populate('assignee', 'name email avatar')
         .populate('reporter', 'name email avatar')
-        .sort({ status: 1 });
+        .sort({ status: 1 })
+        .lean();
 };
 
 
@@ -242,5 +269,6 @@ export const getTicketById = async (ticketId: string) => {
             path: 'comments',
             select: 'message createdAt userId attachments',
             populate: { path: 'userId', select: 'name avatar' }
-        });
+        })
+        .lean();
 };
