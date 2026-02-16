@@ -23,7 +23,7 @@ export const createProject = async (userId: string, data: { name: string; descri
             startDate,
             endDate,
             goal: 'Initial setup and planning',
-            status: 'PLANNED'
+            status: 'ACTIVE'
         });
     } catch (error) {
         console.error('Failed to create automatic cycle for project:', error);

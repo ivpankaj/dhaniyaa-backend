@@ -21,7 +21,7 @@ const SprintSchema = new Schema<ISprint>({
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
-    status: { type: String, enum: ['ACTIVE', 'PLANNED', 'COMPLETED'], default: 'PLANNED' },
+    status: { type: String, enum: ['ACTIVE', 'PLANNED', 'COMPLETED'], default: 'ACTIVE' },
     summary: {
         totalTickets: { type: Number, default: 0 },
         completedTickets: { type: Number, default: 0 },
